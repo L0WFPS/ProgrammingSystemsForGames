@@ -1,0 +1,20 @@
+{
+    "asset": "c47f6ffe718ec01429f3dfbcfccbc49d",
+    "fileName": "0198b80f-5fd2-7c52-bc9e-31ccb5d89bcc.jpg",
+    "prompt": "it should be just a red box with no background. Just a picture of a 3d red cube nothing else.\n",
+    "negativePrompt": "",
+    "model": "55f71215-6b73-4707-881e-69c61aca68c0",
+    "modelName": "3D Icons",
+    "customSeed": -1,
+    "w3CTraceId": "f810b0e1ee91b56d49f0097b5517ab9e",
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0
+}

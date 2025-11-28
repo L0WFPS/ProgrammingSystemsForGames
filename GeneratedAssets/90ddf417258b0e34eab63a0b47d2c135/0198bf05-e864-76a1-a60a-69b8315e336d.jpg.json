@@ -1,0 +1,20 @@
+{
+    "asset": "90ddf417258b0e34eab63a0b47d2c135",
+    "fileName": "0198bf05-e864-76a1-a60a-69b8315e336d.jpg",
+    "prompt": "Yellow 3d block on white background",
+    "negativePrompt": "",
+    "model": "55f71215-6b73-4707-881e-69c61aca68c0",
+    "modelName": "3D Icons",
+    "customSeed": -1,
+    "w3CTraceId": "3a9b1f0c42a627ef4b80f54229a13890",
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0
+}

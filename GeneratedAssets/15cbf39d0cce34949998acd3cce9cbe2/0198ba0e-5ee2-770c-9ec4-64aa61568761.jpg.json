@@ -1,0 +1,20 @@
+{
+    "asset": "15cbf39d0cce34949998acd3cce9cbe2",
+    "fileName": "0198ba0e-5ee2-770c-9ec4-64aa61568761.jpg",
+    "prompt": "Just a 3d green cube with no background",
+    "negativePrompt": "",
+    "model": "55f71215-6b73-4707-881e-69c61aca68c0",
+    "modelName": "3D Icons",
+    "customSeed": -1,
+    "w3CTraceId": "5d2a157ee3877bfc65d5823eb6179353",
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0
+}
