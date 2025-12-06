@@ -17,9 +17,9 @@ TagManager:
   - Craftable
   - Button
   - Ground
-  - 
-  - 
-  - 
+  - RoomGeometry
+  - Player
+  - Walls
   - 
   - 
   - 

@@ -273,20 +273,69 @@ public class ProceduralLevelGenerator : MonoBehaviour
 
         foreach (var room in rooms)
         {
-            GameObject prefab = GetPrefabForRoom(room.kind);
-            if (prefab == null)
-                continue;
-
             Vector3 pos = GridToWorld(room.gridPos);
 
-            // For now no rotation; later we can rotate based on connections
-            Quaternion rot = Quaternion.identity;
+            // -------------------------------
+            // CREATE FLOOR WITH COLLIDER
+            // -------------------------------
+            GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            floor.transform.SetParent(parent);
+            floor.transform.position = pos + new Vector3(0, -0.5f, 0); // a little downward so player stands on top
+            floor.transform.localScale = new Vector3(cellSize, 1f, cellSize);
+            floor.name = "Floor_" + room.gridPos;
+            floor.layer = LayerMask.NameToLayer("Ground");
 
-            GameObject instance = Instantiate(prefab, pos, rot, parent);
-            room.instance = instance;
-            spawnedInstances.Add(instance);
+
+
+            // store as room instance
+            room.instance = floor;
+            spawnedInstances.Add(floor);
+
+            // -------------------------------
+            // CREATE WALLS AROUND ROOM
+            // -------------------------------
+            float half = cellSize / 2f;
+            float wallHeight = 3f;
+            float wallThickness = 0.5f;
+
+            // North
+            if (!room.neighbors.Exists(r => r.gridPos == room.gridPos + Vector2Int.up))
+                CreateWall(parent, pos + new Vector3(0, wallHeight / 2f, half),
+                           cellSize, wallHeight, wallThickness);
+
+            // South
+            if (!room.neighbors.Exists(r => r.gridPos == room.gridPos + Vector2Int.down))
+                CreateWall(parent, pos + new Vector3(0, wallHeight / 2f, -half),
+                           cellSize, wallHeight, wallThickness);
+
+            // East
+            if (!room.neighbors.Exists(r => r.gridPos == room.gridPos + Vector2Int.right))
+                CreateWall(parent, pos + new Vector3(half, wallHeight / 2f, 0),
+                           wallThickness, wallHeight, cellSize);
+
+            // West
+            if (!room.neighbors.Exists(r => r.gridPos == room.gridPos + Vector2Int.left))
+                CreateWall(parent, pos + new Vector3(-half, wallHeight / 2f, 0),
+                           wallThickness, wallHeight, cellSize);
         }
     }
+
+    // Helper method to spawn a wall cube
+    private void CreateWall(Transform parent, Vector3 pos, float sizeX, float sizeY, float sizeZ)
+    {
+        GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        wall.transform.SetParent(parent);
+        wall.transform.position = pos;
+        wall.transform.localScale = new Vector3(sizeX, sizeY, sizeZ);
+        wall.name = "Wall";
+
+        wall.layer = LayerMask.NameToLayer("Walls");
+
+
+
+        spawnedInstances.Add(wall);
+    }
+
 
     private GameObject GetPrefabForRoom(RoomKind kind)
     {
@@ -343,8 +392,36 @@ public class ProceduralLevelGenerator : MonoBehaviour
         }
     }
 
-    private Vector3 GridToWorld(Vector2Int gridPos)
+    public Vector3 GridToWorld(Vector2Int gridPos)
+
     {
-        return new Vector3(gridPos.x * cellSize, 0f, gridPos.y * cellSize);
+        return new Vector3(gridPos.x * cellSize, 1f, gridPos.y * cellSize);
+    }
+
+    // Monster Sighting Support
+
+    public List<RoomNode> GetRooms()
+    {
+        return rooms;
+    }
+
+    public RoomNode GetClosestRoom(Vector3 worldPos)
+    {
+        RoomNode closest = null;
+        float bestDist = float.MaxValue;
+
+        foreach (var room in rooms)
+        {
+            Vector3 pos = GridToWorld(room.gridPos);
+            float d = Vector3.Distance(pos, worldPos);
+            if (d < bestDist)
+            {
+                bestDist = d;
+                closest = room;
+            }
+        }
+
+        return closest;
     }
 }
+
