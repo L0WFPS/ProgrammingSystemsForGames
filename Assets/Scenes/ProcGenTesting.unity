@@ -545,6 +545,9 @@ MonoBehaviour:
   objectivePrefab: {fileID: 9208622273168552527, guid: a28ecd85412e172448b3a076318c66a9, type: 3}
   regenerateOnStart: 1
   drawGizmos: 1
+  doorwayMarkerPrefab: {fileID: 8146348140084700622, guid: 9c14d1b25564a91459a1bf7b3b884c4d, type: 3}
+  doorwayMarkerHeight: 1
+  doorwayMarkerScale: 1
   rooms: []
 --- !u!4 &1030253700
 Transform:

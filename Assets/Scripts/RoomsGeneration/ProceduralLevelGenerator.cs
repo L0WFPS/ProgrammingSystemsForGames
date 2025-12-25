@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class ProceduralLevelGenerator : MonoBehaviour
 {
@@ -56,14 +57,24 @@ public class ProceduralLevelGenerator : MonoBehaviour
     public bool regenerateOnStart = true;
     public bool drawGizmos = true;
 
+    [Header("Connection Markers")]
+    public GameObject doorwayMarkerPrefab;
+    public float doorwayMarkerHeight = 1.0f;
+    public float doorwayMarkerScale = 1.0f;
+
     [SerializeField]
     private List<RoomNode> rooms = new List<RoomNode>();
+
+    // ADD near your spawnedInstances list (so markers get cleaned up too)
+    private readonly List<GameObject> spawnedDoorwayMarkers = new List<GameObject>();
 
     // For quick overlap checks
     private Dictionary<Vector2Int, RoomNode> roomLookup = new Dictionary<Vector2Int, RoomNode>();
 
     // Track spawned room instances so we can clean them up
     private readonly List<GameObject> spawnedInstances = new List<GameObject>();
+
+   
 
     private void Start()
     {
@@ -112,6 +123,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
             // Link neighbors both ways
             lastRoom.neighbors.Add(newRoom);
             newRoom.neighbors.Add(lastRoom);
+            EnsureDoorMarker(newRoom, lastRoom);
 
             lastRoom = newRoom;
             currentPos = nextPos;
@@ -228,6 +240,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
             // Link both ways
             previous.neighbors.Add(newRoom);
             newRoom.neighbors.Add(previous);
+            EnsureDoorMarker(newRoom, previous);
 
             previous = newRoom;
             currentPos = nextPos;
@@ -236,11 +249,34 @@ public class ProceduralLevelGenerator : MonoBehaviour
         branchesCreated++;
     }
 
-    // ---------- GEOMETRY LAYER ----------
-
-    private void ClearGeometry()
+    private void EnsureDoorMarker(RoomNode r1, RoomNode r2)
     {
-        // Destroy previously spawned instances
+        if (doorwayMarkerPrefab == null) return;
+
+        Vector3 w1 = GridToWorld(r1.gridPos);
+        Vector3 w2 = GridToWorld(r2.gridPos);
+
+        Vector3 mid = (w1 + w2) * 0.5f;
+        mid.y += doorwayMarkerHeight;
+
+        Vector3 dir = (w2 - w1);
+        dir.y = 0f;
+        Quaternion rot = (dir.sqrMagnitude > 0.0001f)
+            ? Quaternion.LookRotation(dir.normalized, Vector3.up)
+            : Quaternion.identity;
+
+        Transform parent = levelRoot != null ? levelRoot : transform;
+        GameObject marker = Instantiate(doorwayMarkerPrefab, mid, rot, parent);
+        marker.transform.localScale = Vector3.one * doorwayMarkerScale;
+
+        spawnedDoorwayMarkers.Add(marker);
+    }
+
+        // ---------- GEOMETRY LAYER ----------
+
+        private void ClearGeometry()
+    {
+        // Clear previously spawned instances
         foreach (var obj in spawnedInstances)
         {
             if (obj == null) continue;
@@ -253,7 +289,19 @@ public class ProceduralLevelGenerator : MonoBehaviour
 
         spawnedInstances.Clear();
 
-        // Optional: also clear children under levelRoot
+        // Clear doorways
+        foreach (var obj in spawnedDoorwayMarkers)
+        {
+            if (obj == null) continue;
+
+            if (Application.isPlaying)
+                Destroy(obj);
+            else
+                DestroyImmediate(obj);
+        }
+        spawnedDoorwayMarkers.Clear();
+
+        // Clear children under levelRoot
         if (levelRoot != null)
         {
             for (int i = levelRoot.childCount - 1; i >= 0; i--)
@@ -291,6 +339,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
             room.instance = floor;
             spawnedInstances.Add(floor);
 
+
             // -------------------------------
             // CREATE WALLS AROUND ROOM
             // -------------------------------
@@ -317,6 +366,13 @@ public class ProceduralLevelGenerator : MonoBehaviour
             if (!room.neighbors.Exists(r => r.gridPos == room.gridPos + Vector2Int.left))
                 CreateWall(parent, pos + new Vector3(-half, wallHeight / 2f, 0),
                            wallThickness, wallHeight, cellSize);
+
+            // -------------------------------
+            // CREATE DOORWAYS
+            // -------------------------------
+
+
+
         }
     }
 
@@ -335,6 +391,9 @@ public class ProceduralLevelGenerator : MonoBehaviour
 
         spawnedInstances.Add(wall);
     }
+
+    // Helper method to spawn a wall cubes in doorways
+    
 
 
     private GameObject GetPrefabForRoom(RoomKind kind)
