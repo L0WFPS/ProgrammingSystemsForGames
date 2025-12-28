@@ -543,6 +543,7 @@ MonoBehaviour:
   entrancePrefab: {fileID: 9208622273168552527, guid: fdae980eb186b4146856cdcb7d65af02, type: 3}
   normalPrefab: {fileID: 9208622273168552527, guid: f6d003fa44bcbc6499baaf0c7f8da6eb, type: 3}
   objectivePrefab: {fileID: 9208622273168552527, guid: a28ecd85412e172448b3a076318c66a9, type: 3}
+  doorPrefab: {fileID: 2117753318058160987, guid: 5118baed46fb4fa4e8da8f0b82c1ecf6, type: 3}
   regenerateOnStart: 1
   drawGizmos: 1
   doorwayMarkerPrefab: {fileID: 8146348140084700622, guid: 9c14d1b25564a91459a1bf7b3b884c4d, type: 3}
@@ -964,7 +965,7 @@ MonoBehaviour:
   interactRange: 3
   interactMask:
     serializedVersion: 2
-    m_Bits: 832
+    m_Bits: 17216
   promptText: {fileID: 0}
   promptRoot: {fileID: 0}
   inventory: {fileID: 1740382111}

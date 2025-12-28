@@ -23,6 +23,7 @@ public class PlayerInteractor : MonoBehaviour
 
     private IInteractable hovered;
     private IButton button;
+    private IDoor door;
 
     private void Update()
     {
@@ -37,6 +38,8 @@ public class PlayerInteractor : MonoBehaviour
     {
         hovered = null;
         button = null;
+        door = null;
+        
         if (playerCamera == null) return;
 
         var ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
@@ -52,6 +55,11 @@ public class PlayerInteractor : MonoBehaviour
             {
                 Debug.Log("Button");
                 button = hit.collider.GetComponentInParent<IButton>();
+            }
+            if (hit.collider.gameObject.layer == LayerMask.NameToLayer("Door"))
+            {
+                Debug.Log("Door");
+                door = hit.collider.GetComponentInParent<IDoor>();
             }
 
         }
@@ -72,6 +80,10 @@ public class PlayerInteractor : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.E) && button != null)
         {
             button.PressButton(); 
+        }
+        if (Input.GetKeyDown(KeyCode.E) && door != null)
+        {
+            door.ToggleDoor();
         }
 
         

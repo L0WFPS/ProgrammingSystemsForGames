@@ -52,6 +52,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
     public GameObject entrancePrefab;
     public GameObject normalPrefab;
     public GameObject objectivePrefab;
+    public GameObject doorPrefab;
 
     [Header("Debug")]
     public bool regenerateOnStart = true;
@@ -67,6 +68,9 @@ public class ProceduralLevelGenerator : MonoBehaviour
 
     // ADD near your spawnedInstances list (so markers get cleaned up too)
     private readonly List<GameObject> spawnedDoorwayMarkers = new List<GameObject>();
+
+    // List of all doors spawned
+    private readonly List<GameObject> spawnedDoors = new List<GameObject>();
 
     // For quick overlap checks
     private Dictionary<Vector2Int, RoomNode> roomLookup = new Dictionary<Vector2Int, RoomNode>();
@@ -274,7 +278,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
 
         // ---------- GEOMETRY LAYER ----------
 
-        private void ClearGeometry()
+    private void ClearGeometry()
     {
         // Clear previously spawned instances
         foreach (var obj in spawnedInstances)
@@ -300,6 +304,18 @@ public class ProceduralLevelGenerator : MonoBehaviour
                 DestroyImmediate(obj);
         }
         spawnedDoorwayMarkers.Clear();
+
+        //Clear doors
+        foreach (var d in spawnedDoors)
+        {
+            if (d == null) continue;
+
+            if (Application.isPlaying)
+                Destroy(d);
+            else
+                DestroyImmediate(d);
+        }
+        spawnedDoors.Clear();
 
         // Clear children under levelRoot
         if (levelRoot != null)
@@ -371,7 +387,15 @@ public class ProceduralLevelGenerator : MonoBehaviour
             // CREATE DOORWAYS
             // -------------------------------
 
+            foreach (var marker in spawnedDoorwayMarkers)
+            {
+                if (marker == null) continue;
+                if (marker.transform.childCount > 0) continue; // door already spawned as child
 
+                var door = Instantiate(doorPrefab, marker.transform.position, marker.transform.rotation, marker.transform);
+                door.transform.localPosition += Vector3.up * 0f;
+                spawnedDoors.Add(door);
+            }
 
         }
     }
@@ -392,9 +416,20 @@ public class ProceduralLevelGenerator : MonoBehaviour
         spawnedInstances.Add(wall);
     }
 
-    // Helper method to spawn a wall cubes in doorways
-    
+    // Helper method to spawn doors
+    private void SpawnDoorAtMarker(Transform marker)
+    {
+        if (doorPrefab == null) return;
 
+        Transform parent = levelRoot != null ? levelRoot : transform;
+
+        Vector3 pos = marker.position;
+        pos.y += 1f;
+
+        // Use marker rotation so the door faces the connection direction
+        GameObject door = Instantiate(doorPrefab, pos, marker.rotation, parent);
+        spawnedDoors.Add(door);
+    }
 
     private GameObject GetPrefabForRoom(RoomKind kind)
     {
@@ -409,6 +444,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
                 return normalPrefab;
         }
     }
+
 
     // ---------- GIZMOS ----------
 
