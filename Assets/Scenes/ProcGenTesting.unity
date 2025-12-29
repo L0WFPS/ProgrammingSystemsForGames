@@ -544,6 +544,7 @@ MonoBehaviour:
   normalPrefab: {fileID: 9208622273168552527, guid: f6d003fa44bcbc6499baaf0c7f8da6eb, type: 3}
   objectivePrefab: {fileID: 9208622273168552527, guid: a28ecd85412e172448b3a076318c66a9, type: 3}
   doorPrefab: {fileID: 2117753318058160987, guid: 5118baed46fb4fa4e8da8f0b82c1ecf6, type: 3}
+  wallsAroundDoor: {fileID: 6400086291282810637, guid: 00e44f6143dcd564b90cdd9ec6050696, type: 3}
   regenerateOnStart: 1
   drawGizmos: 1
   doorwayMarkerPrefab: {fileID: 8146348140084700622, guid: 9c14d1b25564a91459a1bf7b3b884c4d, type: 3}

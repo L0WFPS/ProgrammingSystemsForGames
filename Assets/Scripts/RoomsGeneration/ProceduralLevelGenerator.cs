@@ -53,6 +53,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
     public GameObject normalPrefab;
     public GameObject objectivePrefab;
     public GameObject doorPrefab;
+    public GameObject wallsAroundDoor;
 
     [Header("Debug")]
     public bool regenerateOnStart = true;
@@ -395,6 +396,10 @@ public class ProceduralLevelGenerator : MonoBehaviour
                 var door = Instantiate(doorPrefab, marker.transform.position, marker.transform.rotation, marker.transform);
                 door.transform.localPosition += Vector3.up * 0f;
                 spawnedDoors.Add(door);
+
+                var wallDoor = Instantiate(wallsAroundDoor, marker.transform.position, marker.transform.rotation, marker.transform);
+                wallDoor.transform.localPosition += Vector3.up * 0f;
+                spawnedInstances.Add(wallDoor);
             }
 
         }
@@ -414,21 +419,6 @@ public class ProceduralLevelGenerator : MonoBehaviour
 
 
         spawnedInstances.Add(wall);
-    }
-
-    // Helper method to spawn doors
-    private void SpawnDoorAtMarker(Transform marker)
-    {
-        if (doorPrefab == null) return;
-
-        Transform parent = levelRoot != null ? levelRoot : transform;
-
-        Vector3 pos = marker.position;
-        pos.y += 1f;
-
-        // Use marker rotation so the door faces the connection direction
-        GameObject door = Instantiate(doorPrefab, pos, marker.rotation, parent);
-        spawnedDoors.Add(door);
     }
 
     private GameObject GetPrefabForRoom(RoomKind kind)

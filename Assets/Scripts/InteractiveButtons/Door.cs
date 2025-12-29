@@ -7,36 +7,42 @@ public interface IDoor
 
 public class Door : MonoBehaviour, IDoor
 {
+    public Transform hinge;            // RIGHT side hinge
     public float openAngle = 90f;
-    public float openSpeed = 4f;
+    public float openSpeed = 90f;       // degrees per second
     public bool openInverted = false;
 
     private bool isOpen = false;
-    private Quaternion closedRotation;
-    private Quaternion openRotation;
-
-    void Start()
-    {
-        closedRotation = transform.rotation;
-
-        float direction = openInverted ? -1f : 1f;
-        openRotation = Quaternion.Euler(
-            transform.eulerAngles + Vector3.up * openAngle * direction
-        );
-    }
+    private float currentAngle = 0f;
+    private float targetAngle = 0f;
 
     void Update()
     {
-        Quaternion targetRotation = isOpen ? openRotation : closedRotation;
-        transform.rotation = Quaternion.Lerp(
-            transform.rotation,
-            targetRotation,
-            Time.deltaTime * openSpeed
+        if (Mathf.Approximately(currentAngle, targetAngle))
+            return;
+
+        float direction = Mathf.Sign(targetAngle - currentAngle);
+        float step = openSpeed * Time.deltaTime * direction;
+
+        // Prevent overshoot
+        if (Mathf.Abs(step) > Mathf.Abs(targetAngle - currentAngle))
+            step = targetAngle - currentAngle;
+
+        Vector3 axis = Vector3.up;
+        if (openInverted) axis = -axis;
+
+        transform.RotateAround(
+            hinge.position,
+            axis,
+            step
         );
+
+        currentAngle += step;
     }
 
     public void ToggleDoor()
     {
+        targetAngle = isOpen ? 0f : openAngle;
         isOpen = !isOpen;
     }
 }
