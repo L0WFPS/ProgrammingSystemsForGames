@@ -1,96 +1,148 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using UnityEngine;
 
 public class MonsterVision : MonoBehaviour
 {
-    [Header("Vision Settings")]
-    [Tooltip("Maximum distance the monster can see the player.")]
+    [Header("Vision")]
     public float viewDistance = 22f;
+    [Range(1f, 179f)] public float viewAngle = 140f;
 
-    [Tooltip("Horizontal field of view in degrees (wide so it can see while patrolling).")]
-    public float viewAngle = 140f;
+    [Header("Layers")]
+    public LayerMask targetMask;       // Player
+    public LayerMask obstructionMask;  // Walls + Door
 
-    [Header("What blocks vision (set to Walls in Inspector)")]
-    public LayerMask obstructionMask; // SHOULD be just Walls (and optionally Ground if you want floors to block)
+    [Header("Ray Origins")]
+    public Transform eye;
+    public float eyeHeight = 1.6f;
 
-    private CapsuleCollider monsterCol;
-    private CapsuleCollider playerCol;
+    [Header("Targeting")]
+    [Tooltip("If true, aim at the player's collider bounds center (recommended).")]
+    public bool aimAtTargetCollider = true;
 
-    private void Awake()
+    [Tooltip("Fallback aim height used only if no collider is found.")]
+    public float fallbackPlayerAimHeight = 0.6f;
+
+    [Header("Advanced")]
+    public bool ignoreOpenDoors = true;
+
+    [Tooltip("Draw debug ray in Scene view")]
+    public bool debugDraw = false;
+
+    [Tooltip("Log the first ray hit (useful to diagnose what blocks LOS)")]
+    public bool debugLogFirstHit = false;
+
+    private readonly RaycastHit[] _hits = new RaycastHit[64];
+
+    public bool CanSee(Transform target, out Vector3 lastSeenPoint)
     {
-        // We assume the monster has a CapsuleCollider on its body child
-        monsterCol = GetComponentInChildren<CapsuleCollider>();
-    }
+        lastSeenPoint = default;
+        if (target == null) return false;
 
-    public bool CanSee(Transform target)
-    {
-        if (target == null)
-            return false;
+        Vector3 origin = (eye != null) ? eye.position : transform.position + Vector3.up * eyeHeight;
 
-        // Cache the player's capsule collider (on Body)
-        if (playerCol == null)
-            playerCol = target.GetComponentInChildren<CapsuleCollider>();
-
-        if (monsterCol == null || playerCol == null)
-            return false;
-
-        // --- RAY ORIGIN ---
-        // Start from slightly above + in front of the monster's chest
-        // so we don't raycast inside its own collider or into the floor edge.
-        Vector3 origin =
-            monsterCol.bounds.center +
-            Vector3.up * 0.15f +       // lift a bit
-            transform.forward * 0.45f; // push forward out of chest
-
-        // Aim at the center of the player's collider (good for standing / crouch)
-        Vector3 targetPoint = playerCol.bounds.center;
+        // ✅ Aim at collider center so we don't miss due to pivot/height mismatch
+        Vector3 targetPoint = GetTargetAimPoint(target);
 
         Vector3 toTarget = targetPoint - origin;
-        float distance = toTarget.magnitude;
-        if (distance > viewDistance)
-            return false;
+        float dist = toTarget.magnitude;
+        if (dist > viewDistance) return false;
 
-        Vector3 dir = toTarget.normalized;
+        Vector3 dir = toTarget / Mathf.Max(0.0001f, dist);
 
-        // --- FOV CHECK ---
-        float angle = Vector3.Angle(transform.forward, dir);
-        if (angle > viewAngle * 0.5f)
-            return false;
+        // FOV check (flat)
+        Vector3 flatDir = new Vector3(dir.x, 0f, dir.z);
+        if (flatDir.sqrMagnitude < 0.0001f) return false;
 
-        // --- OBSTRUCTION CHECK ---
-        // We cast ONLY against obstructionMask (walls, optionally ground).
-        // If we hit something AND it's not part of the player, vision is blocked.
-        if (Physics.Raycast(origin, dir, out RaycastHit hit, distance, obstructionMask))
+        float angle = Vector3.Angle(transform.forward, flatDir.normalized);
+        if (angle > viewAngle * 0.5f) return false;
+
+        int mask = obstructionMask | targetMask;
+
+        int hitCount = Physics.RaycastNonAlloc(origin, dir, _hits, viewDistance, mask, QueryTriggerInteraction.Ignore);
+
+        if (hitCount <= 0)
         {
-            if (!hit.collider.transform.IsChildOf(target))
+            if (debugDraw) Debug.DrawRay(origin, dir * viewDistance, Color.red);
+            return false;
+        }
+
+        Array.Sort(_hits, 0, hitCount, new HitDistanceComparer());
+
+        if (debugDraw) Debug.DrawRay(origin, dir * viewDistance, Color.yellow);
+
+        if (debugLogFirstHit)
+        {
+            var c0 = _hits[0].collider;
+            if (c0 != null)
+                Debug.Log($"[MonsterVision] First hit: {c0.name} layer={LayerMask.LayerToName(c0.gameObject.layer)} root={c0.transform.root.name}");
+        }
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            Collider c = _hits[i].collider;
+            if (c == null) continue;
+
+            // Target?
+            if (IsInMask(c.gameObject, targetMask) ||
+                (c.attachedRigidbody != null && IsInMask(c.attachedRigidbody.gameObject, targetMask)) ||
+                IsAnyParentInMask(c.transform, targetMask))
             {
-                // Hit a wall or something else before the player.
-                return false;
+                lastSeenPoint = _hits[i].point;
+                return true;
+            }
+
+            // Obstruction?
+            if (IsInMask(c.gameObject, obstructionMask) || IsAnyParentInMask(c.transform, obstructionMask))
+            {
+                if (ignoreOpenDoors)
+                {
+                    IDoor door = c.GetComponentInParent<IDoor>();
+                    if (door != null && door.IsOpen)
+                        continue; // open door doesn't block LOS
+                }
+
+                return false; // wall or closed door blocks
             }
         }
 
-        // No blocking walls → player is visible
-        return true;
+        return false;
     }
 
-#if UNITY_EDITOR
-    private void OnDrawGizmosSelected()
+    private Vector3 GetTargetAimPoint(Transform target)
     {
-        if (monsterCol == null) return;
+        if (!aimAtTargetCollider)
+            return target.position + Vector3.up * fallbackPlayerAimHeight;
 
-        Vector3 origin =
-            monsterCol.bounds.center +
-            Vector3.up * 0.15f +
-            transform.forward * 0.45f;
+        // Find a collider anywhere under the target (your "Body" capsule will be found)
+        Collider col = target.GetComponentInChildren<Collider>();
+        if (col != null)
+            return col.bounds.center;
 
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(origin, viewDistance);
-
-        float half = viewAngle * 0.5f;
-        Vector3 leftDir = Quaternion.Euler(0, -half, 0) * transform.forward;
-        Vector3 rightDir = Quaternion.Euler(0, half, 0) * transform.forward;
-
-        Gizmos.DrawLine(origin, origin + leftDir * viewDistance);
-        Gizmos.DrawLine(origin, origin + rightDir * viewDistance);
+        return target.position + Vector3.up * fallbackPlayerAimHeight;
     }
-#endif
+
+    private static bool IsInMask(GameObject go, LayerMask mask)
+    {
+        int bit = 1 << go.layer;
+        return (mask.value & bit) != 0;
+    }
+
+    private static bool IsAnyParentInMask(Transform t, LayerMask mask)
+    {
+        Transform cur = t;
+        while (cur != null)
+        {
+            int bit = 1 << cur.gameObject.layer;
+            if ((mask.value & bit) != 0)
+                return true;
+            cur = cur.parent;
+        }
+        return false;
+    }
+
+    private class HitDistanceComparer : IComparer<RaycastHit>
+    {
+        public int Compare(RaycastHit a, RaycastHit b) => a.distance.CompareTo(b.distance);
+    }
 }

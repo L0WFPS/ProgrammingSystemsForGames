@@ -508,5 +508,11 @@ public class ProceduralLevelGenerator : MonoBehaviour
 
         return closest;
     }
+
+    public Vector3 GridToWorldPublic(Vector2Int gridPos)
+    {
+        return new Vector3(gridPos.x * cellSize, 0f, gridPos.y * cellSize);
+    }
+
 }
 
