@@ -9,6 +9,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
     {
         Entrance,
         Normal,
+        EnemySpawn,
         Objective
     }
 
@@ -54,6 +55,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
     public GameObject objectivePrefab;
     public GameObject doorPrefab;
     public GameObject wallsAroundDoor;
+    public GameObject enemyPrefab;
 
     [Header("Debug")]
     public bool regenerateOnStart = true;
@@ -63,6 +65,13 @@ public class ProceduralLevelGenerator : MonoBehaviour
     public GameObject doorwayMarkerPrefab;
     public float doorwayMarkerHeight = 1.0f;
     public float doorwayMarkerScale = 1.0f;
+
+    [Header("Enemy Spawn Rooms")]
+    [Range(0f, 1f)]
+    public float enemySpawnRoomChance = 0.25f;
+
+    [Min(0)]
+    public int maxEnemySpawnRooms = 4;
 
     [SerializeField]
     private List<RoomNode> rooms = new List<RoomNode>();
@@ -79,7 +88,10 @@ public class ProceduralLevelGenerator : MonoBehaviour
     // Track spawned room instances so we can clean them up
     private readonly List<GameObject> spawnedInstances = new List<GameObject>();
 
-   
+    private readonly Dictionary<Vector2Int, GameObject> enemyByRoom = new Dictionary<Vector2Int, GameObject>();
+
+
+
 
     private void Start()
     {
@@ -144,11 +156,13 @@ public class ProceduralLevelGenerator : MonoBehaviour
         {
             lastRoom.kind = RoomKind.Objective;
         }
+        // 5. Assign enemy spawns
+        AssignEnemySpawnRooms(rng);
 
         Debug.Log($"Generated layout with {rooms.Count} rooms " +
                   $"({mainPathCount} on main path, branches added).");
 
-        // 5. Build actual room instances in the scene
+        // 6. Build actual room instances in the scene
         BuildLevelGeometry();
     }
 
@@ -197,6 +211,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
         return currentPos;
     }
 
+    //Branches generation
     private void GenerateBranches(int mainPathCount, System.Random rng)
     {
         int branchesCreated = 0;
@@ -254,6 +269,42 @@ public class ProceduralLevelGenerator : MonoBehaviour
         branchesCreated++;
     }
 
+    // Assign some rooms as enemy spawners
+    private void AssignEnemySpawnRooms(System.Random rng)
+    {
+        if (maxEnemySpawnRooms <= 0) return;
+
+        // Collect candidates: ONLY normal rooms (not Entrance/Objective)
+        List<RoomNode> candidates = new List<RoomNode>();
+        foreach (var room in rooms)
+        {
+            if (room.kind == RoomKind.Normal)
+                candidates.Add(room);
+        }
+
+        // Shuffle candidates (Fisher-Yates) so selection is random but deterministic with seed
+        for (int i = 0; i < candidates.Count - 1; i++)
+        {
+            int j = rng.Next(i, candidates.Count);
+            (candidates[i], candidates[j]) = (candidates[j], candidates[i]);
+        }
+
+        int made = 0;
+
+        // Walk the shuffled list and upgrade some rooms based on chance, until max reached
+        foreach (var room in candidates)
+        {
+            if (made >= maxEnemySpawnRooms) break;
+
+            if (rng.NextDouble() <= enemySpawnRoomChance)
+            {
+                room.kind = RoomKind.EnemySpawn;
+                made++;
+            }
+        }
+    }
+
+    //Create door markers
     private void EnsureDoorMarker(RoomNode r1, RoomNode r2)
     {
         if (doorwayMarkerPrefab == null) return;
@@ -330,6 +381,16 @@ public class ProceduralLevelGenerator : MonoBehaviour
                     DestroyImmediate(child.gameObject);
             }
         }
+
+        // Clear enemies
+        foreach (var kvp in enemyByRoom)
+        {
+            if (kvp.Value == null) continue;
+
+            if (Application.isPlaying) Destroy(kvp.Value);
+            else DestroyImmediate(kvp.Value);
+        }
+        enemyByRoom.Clear();
     }
 
     private void BuildLevelGeometry()
@@ -402,6 +463,12 @@ public class ProceduralLevelGenerator : MonoBehaviour
                 spawnedInstances.Add(wallDoor);
             }
 
+            // -------------------------------
+            // SPAWN ENEMIES
+            // -------------------------------
+
+            SpawnEnemies();
+
         }
     }
 
@@ -419,6 +486,34 @@ public class ProceduralLevelGenerator : MonoBehaviour
 
 
         spawnedInstances.Add(wall);
+    }
+
+    //Spawn enemies in rooms
+    private void SpawnEnemies()
+    {
+        if (enemyPrefab == null)
+            return;
+
+        Transform parent = levelRoot != null ? levelRoot : transform;
+
+        foreach (var room in rooms)
+        {
+            if (room.kind != RoomKind.EnemySpawn)
+                continue;
+
+            if (room.instance == null)
+                continue;
+
+            // If there's already an enemy for this room, do nothing
+            if (enemyByRoom.ContainsKey(room.gridPos))
+                continue;
+
+            Vector3 pos = room.instance.transform.position;
+            pos.y = 0f;
+
+            GameObject enemy = Instantiate(enemyPrefab, pos, Quaternion.identity, parent);
+            enemyByRoom.Add(room.gridPos, enemy);
+        }
     }
 
     private GameObject GetPrefabForRoom(RoomKind kind)
