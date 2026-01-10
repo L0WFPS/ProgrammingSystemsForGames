@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 3768620868036896307}
   - component: {fileID: 2954416811639640349}
   - component: {fileID: 3603584252149825413}
-  m_Layer: 0
+  m_Layer: 15
   m_Name: Monster
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -185,7 +185,7 @@ GameObject:
   - component: {fileID: 3743431932798520924}
   - component: {fileID: 225906497677030934}
   - component: {fileID: 7754062337396406301}
-  m_Layer: 0
+  m_Layer: 15
   m_Name: MonsterBody
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -298,7 +298,7 @@ GameObject:
   - component: {fileID: 8357341238782318949}
   - component: {fileID: 2200448005232881633}
   - component: {fileID: 5233976082534544644}
-  m_Layer: 0
+  m_Layer: 15
   m_Name: Cube (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}

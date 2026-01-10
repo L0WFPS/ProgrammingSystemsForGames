@@ -8,40 +8,38 @@ public class Door : MonoBehaviour, IDoor
 
     [Header("Motion")]
     [SerializeField] private float openAngle = 90f;
-    [SerializeField] private float openSpeed = 180f; // degrees per second
+    [SerializeField] private float openSpeed = 180f;
     [SerializeField] private bool invertOpenDirection = false;
 
-    [Header("Safety / Quality")]
-    [Tooltip("If true, door chooses an open direction that swings away from the opener (monster/player) to reduce trapping.")]
+    [Header("Open Direction")]
+    [Tooltip("If true, door opens away from the opener.")]
     [SerializeField] private bool openAwayFromOpener = true;
 
-    [Tooltip("If true, while the door is swinging we temporarily ignore collision between the door and the opener.")]
+    [Header("Collision Safety")]
     [SerializeField] private bool ignoreOpenerCollisionWhileMoving = true;
-
-    [Tooltip("How long to ignore collision while door swings (seconds).")]
     [SerializeField] private float ignoreCollisionTime = 0.6f;
 
     public bool IsOpen => isOpen;
 
     private bool isOpen;
     private bool isMoving;
-    private Quaternion closedRotation;
-    private float currentOpenSignedAngle; // keeps track of which direction we opened this time
+    private float currentOpenSignedAngle;
     private Coroutine moveRoutine;
-
     private Collider doorCollider;
 
     private void Awake()
     {
         doorCollider = GetComponent<Collider>();
-        closedRotation = transform.rotation;
 
         if (hinge == null)
-            Debug.LogWarning($"[{name}] Door has no hinge reference set.");
+            Debug.LogWarning($"[{name}] Door has no hinge assigned.");
     }
+
+    // ---------------- PUBLIC API ----------------
 
     public void ToggleDoor()
     {
+        // Legacy support (no opener info)
         if (isMoving) return;
 
         if (isOpen) CloseDoor();
@@ -52,50 +50,53 @@ public class Door : MonoBehaviour, IDoor
 
     public void OpenDoor(Transform opener)
     {
-        if (isMoving) return;
-        if (isOpen) return;
+        if (isMoving || isOpen) return;
 
         float sign = 1f;
 
-        // Pick a direction that swings away from the opener (helps monster not get pinned)
+        // ?? Core logic: pick the swing direction that moves AWAY from opener
         if (openAwayFromOpener && opener != null && hinge != null)
         {
-            // If opener is on the "front" side of the door, open one way; if behind, open the other.
-            Vector3 toOpener = opener.position - transform.position;
-            float side = Vector3.Dot(transform.forward, toOpener);
+            const float testAngle = 5f;
 
-            // If opener is in front of the door, open away from them
-            // (flip sign depending on your door orientation)
-            sign = (side >= 0f) ? 1f : -1f;
+            Vector3 openerPos = opener.position;
+            openerPos.y = transform.position.y;
+
+            Vector3 curPos = transform.position;
+
+            Vector3 posPlus = RotatePointAroundPivotY(curPos, hinge.position, +testAngle);
+            Vector3 posMinus = RotatePointAroundPivotY(curPos, hinge.position, -testAngle);
+
+            float dPlus = (openerPos - posPlus).sqrMagnitude;
+            float dMinus = (openerPos - posMinus).sqrMagnitude;
+
+            sign = (dPlus > dMinus) ? 1f : -1f;
         }
 
-        if (invertOpenDirection) sign *= -1f;
+        if (invertOpenDirection)
+            sign *= -1f;
 
         currentOpenSignedAngle = openAngle * sign;
 
         if (ignoreOpenerCollisionWhileMoving && opener != null)
-            StartCoroutine(TemporarilyIgnoreCollisionWith(opener, ignoreCollisionTime));
+            StartCoroutine(TemporarilyIgnoreCollisionWith(opener));
 
-        StartMove(true);
+        StartMove(opening: true);
     }
 
     public void CloseDoor()
     {
-        if (isMoving) return;
-        if (!isOpen) return;
-
-        StartMove(false);
+        if (isMoving || !isOpen) return;
+        StartMove(opening: false);
     }
+
+    // ---------------- INTERNAL ----------------
 
     private void StartMove(bool opening)
     {
-        if (hinge == null)
-        {
-            // Fallback: rotate in place (won’t pivot correctly, but avoids hard break)
-            Debug.LogWarning($"[{name}] Door missing hinge, rotating without pivot.");
-        }
+        if (moveRoutine != null)
+            StopCoroutine(moveRoutine);
 
-        if (moveRoutine != null) StopCoroutine(moveRoutine);
         moveRoutine = StartCoroutine(MoveDoor(opening));
     }
 
@@ -103,14 +104,13 @@ public class Door : MonoBehaviour, IDoor
     {
         isMoving = true;
 
-        // We rotate around the hinge in world space
         float targetAngle = opening ? currentOpenSignedAngle : -currentOpenSignedAngle;
-        float moved = 0f;
+        float rotated = 0f;
 
-        while (Mathf.Abs(moved) < Mathf.Abs(targetAngle) - 0.01f)
+        while (Mathf.Abs(rotated) < Mathf.Abs(targetAngle) - 0.01f)
         {
             float step = openSpeed * Time.deltaTime;
-            float remaining = Mathf.Abs(targetAngle) - Mathf.Abs(moved);
+            float remaining = Mathf.Abs(targetAngle) - Mathf.Abs(rotated);
             step = Mathf.Min(step, remaining);
 
             float signedStep = Mathf.Sign(targetAngle) * step;
@@ -120,41 +120,36 @@ public class Door : MonoBehaviour, IDoor
             else
                 transform.Rotate(Vector3.up, signedStep, Space.World);
 
-            moved += signedStep;
+            rotated += signedStep;
             yield return null;
         }
 
         isOpen = opening;
         isMoving = false;
-
-        // Snap exact closed rotation when closing (prevents drift after many opens/closes)
-        if (!opening)
-        {
-            transform.rotation = closedRotation;
-        }
-
         moveRoutine = null;
     }
 
-    private IEnumerator TemporarilyIgnoreCollisionWith(Transform opener, float seconds)
+    private IEnumerator TemporarilyIgnoreCollisionWith(Transform opener)
     {
-        if (doorCollider == null) yield break;
+        if (doorCollider == null || opener == null)
+            yield break;
 
-        Collider[] openerCols = opener.GetComponentsInChildren<Collider>();
-        if (openerCols == null || openerCols.Length == 0) yield break;
+        Collider[] openerColliders = opener.GetComponentsInChildren<Collider>(true);
 
-        foreach (var c in openerCols)
-        {
-            if (c != null)
-                Physics.IgnoreCollision(doorCollider, c, true);
-        }
+        foreach (var c in openerColliders)
+            Physics.IgnoreCollision(doorCollider, c, true);
 
-        yield return new WaitForSeconds(seconds);
+        yield return new WaitForSeconds(ignoreCollisionTime);
 
-        foreach (var c in openerCols)
-        {
-            if (c != null)
-                Physics.IgnoreCollision(doorCollider, c, false);
-        }
+        foreach (var c in openerColliders)
+            Physics.IgnoreCollision(doorCollider, c, false);
+    }
+
+    private static Vector3 RotatePointAroundPivotY(Vector3 point, Vector3 pivot, float angleDeg)
+    {
+        Vector3 dir = point - pivot;
+        Quaternion rot = Quaternion.AngleAxis(angleDeg, Vector3.up);
+        dir = rot * dir;
+        return pivot + dir;
     }
 }
