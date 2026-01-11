@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Recipe
   inputA: {fileID: 11400000, guid: e5e5501ceae4ae44ca91049faf8343af, type: 2}
   inputB: {fileID: 11400000, guid: 0bfa01fbf730b064caa1c88634afe136, type: 2}
-  resultItem: {fileID: 11400000, guid: f415e0eed0da57e4a8d8d5bfe41743e0, type: 2}
+  resultItem: {fileID: 11400000, guid: 9fda12ae0d560844e8b13f793cb0698f, type: 2}
   craftSeconds: 5

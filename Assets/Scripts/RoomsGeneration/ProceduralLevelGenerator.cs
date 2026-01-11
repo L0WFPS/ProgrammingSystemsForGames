@@ -10,6 +10,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
         Entrance,
         Normal,
         EnemySpawn,
+        Loot,
         Objective
     }
 
@@ -56,6 +57,9 @@ public class ProceduralLevelGenerator : MonoBehaviour
     public GameObject doorPrefab;
     public GameObject wallsAroundDoor;
     public GameObject enemyPrefab;
+    public GameObject workbenchPrefab;
+    public GameObject craftItemsPrefab;
+    public GameObject finishPrefab;
 
     [Header("Debug")]
     public bool regenerateOnStart = true;
@@ -66,12 +70,21 @@ public class ProceduralLevelGenerator : MonoBehaviour
     public float doorwayMarkerHeight = 1.0f;
     public float doorwayMarkerScale = 1.0f;
 
+    [Header("Room Markers")]
+    public GameObject roomMarkerPrefab;        
+    public float markerFloorOffset = 0.05f;    
+    public float markerWallInset = 1.0f;      
+    public float markerFloorPadding = 1.0f;    
+
     [Header("Enemy Spawn Rooms")]
     [Range(0f, 1f)]
     public float enemySpawnRoomChance = 0.25f;
-
     [Min(0)]
     public int maxEnemySpawnRooms = 4;
+
+    [Header("Loot Rooms")]
+    [Range(0f, 1f)]
+    public float lootRoomChance = 0.2f;
 
     [SerializeField]
     private List<RoomNode> rooms = new List<RoomNode>();
@@ -90,6 +103,8 @@ public class ProceduralLevelGenerator : MonoBehaviour
 
     private readonly Dictionary<Vector2Int, GameObject> enemyByRoom = new Dictionary<Vector2Int, GameObject>();
 
+    //Spawn objects markers
+    private readonly List<GameObject> spawnedRoomMarkers = new List<GameObject>();
 
 
 
@@ -135,7 +150,11 @@ public class ProceduralLevelGenerator : MonoBehaviour
                 break;
             }
 
-            RoomNode newRoom = CreateRoom(nextPos, RoomKind.Normal);
+            RoomKind kind = (rng.NextDouble() < lootRoomChance)
+                ? RoomKind.Loot
+                : RoomKind.Normal;
+
+            RoomNode newRoom = CreateRoom(nextPos, kind);
 
             // Link neighbors both ways
             lastRoom.neighbors.Add(newRoom);
@@ -156,6 +175,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
         {
             lastRoom.kind = RoomKind.Objective;
         }
+
         // 5. Assign enemy spawns
         AssignEnemySpawnRooms(rng);
 
@@ -255,7 +275,11 @@ public class ProceduralLevelGenerator : MonoBehaviour
             if (roomLookup.ContainsKey(nextPos))
                 break;
 
-            RoomNode newRoom = CreateRoom(nextPos, RoomKind.Normal);
+            RoomKind kind = (rng.NextDouble() < lootRoomChance)
+                ? RoomKind.Loot
+                : RoomKind.Normal;
+
+            RoomNode newRoom = CreateRoom(nextPos, kind);
 
             // Link both ways
             previous.neighbors.Add(newRoom);
@@ -391,6 +415,18 @@ public class ProceduralLevelGenerator : MonoBehaviour
             else DestroyImmediate(kvp.Value);
         }
         enemyByRoom.Clear();
+
+        // Clear room markers
+        foreach (var m in spawnedRoomMarkers)
+        {
+            if (m == null) continue;
+
+            if (Application.isPlaying)
+                Destroy(m);
+            else
+                DestroyImmediate(m);
+        }
+        spawnedRoomMarkers.Clear();
     }
 
     private void BuildLevelGeometry()
@@ -468,7 +504,66 @@ public class ProceduralLevelGenerator : MonoBehaviour
             // -------------------------------
 
             SpawnEnemies();
+        }
 
+        // -------------------------------
+        // SPAWN WORCKBENCH
+        // -------------------------------
+
+        RoomNode entrance = null;
+        for (int i = 0; i < rooms.Count; i++)
+        {
+            if (rooms[i].kind == RoomKind.Entrance)
+            {
+                entrance = rooms[i];
+                break;
+            }
+        }
+
+        GameObject entranceMarker = CreateMarkerNearEmptyWall(entrance);
+
+        if (entranceMarker != null && workbenchPrefab != null)
+        {
+            Instantiate(workbenchPrefab, entranceMarker.transform.position, entranceMarker.transform.rotation, levelRoot);
+        }
+
+        // -------------------------------
+        // SPAWN CRAFTABLES
+        // -------------------------------
+
+        for (int i = 0; i < rooms.Count; i++)
+        {
+            if (rooms[i].kind == RoomKind.Loot)
+            {
+                var lootMarkers = CreateRandomFloorMarkers(rooms[i], 3, seedOffset: 9000);
+
+                foreach (var m in lootMarkers) 
+                {
+                    Instantiate(craftItemsPrefab, m.transform.position, Quaternion.identity, levelRoot);
+
+                }
+            }
+        }
+
+        // -------------------------------
+        // SPAWN FINISH
+        // -------------------------------
+
+        RoomNode objective = null;
+        for (int i = 0; i < rooms.Count; i++)
+        {
+            if (rooms[i].kind == RoomKind.Objective)
+            {
+                objective = rooms[i];
+                break;
+            }
+        }
+
+        GameObject objectiveMarker = CreateMarkerNearEmptyWall(objective);
+
+        if (objectiveMarker != null && finishPrefab != null)
+        {
+            Instantiate(finishPrefab, objectiveMarker.transform.position, objectiveMarker.transform.rotation, levelRoot);
         }
     }
 
@@ -516,6 +611,8 @@ public class ProceduralLevelGenerator : MonoBehaviour
         }
     }
 
+
+
     private GameObject GetPrefabForRoom(RoomKind kind)
     {
         switch (kind)
@@ -530,6 +627,104 @@ public class ProceduralLevelGenerator : MonoBehaviour
         }
     }
 
+    private float GetRoomFloorTopY(RoomNode room)
+    {
+        if (room == null || room.instance == null) return 0f;
+
+        // Your floor is a cube of height 1 at (pos + y=-0.5), so its top is instanceY + 0.5
+        return room.instance.transform.position.y + 0.5f;
+    }
+
+    private GameObject CreateRoomMarker(RoomNode room, Vector3 worldPos, Quaternion rot)
+    {
+        if (roomMarkerPrefab == null) return null;
+        if (room == null) return null;
+
+        Transform parent = levelRoot != null ? levelRoot : transform;
+
+        // snap marker to floor top
+        worldPos.y = GetRoomFloorTopY(room) + markerFloorOffset;
+
+        GameObject marker = Instantiate(roomMarkerPrefab, worldPos, rot, parent);
+        spawnedRoomMarkers.Add(marker);
+        return marker;
+    }
+
+    private GameObject CreateMarkerNearEmptyWall(RoomNode room)
+    {
+        if (room == null || room.instance == null) return null;
+
+        Quaternion markerYawFix = Quaternion.Euler(0f, 180f, 0f);
+
+        Vector3 center = room.instance.transform.position;
+        float half = cellSize / 2f;
+
+        // North (+Z)
+        if (!room.neighbors.Exists(r => r.gridPos == room.gridPos + Vector2Int.up))
+        {
+            Vector3 pos = center + Vector3.forward * (half - markerWallInset);
+            Quaternion rot = Quaternion.LookRotation(Vector3.back, Vector3.up) * markerYawFix; // face inward
+            return CreateRoomMarker(room, pos, rot);
+        }
+
+        // East (+X)
+        if (!room.neighbors.Exists(r => r.gridPos == room.gridPos + Vector2Int.right))
+        {
+            Vector3 pos = center + Vector3.right * (half - markerWallInset);
+            Quaternion rot = Quaternion.LookRotation(Vector3.left, Vector3.up) * markerYawFix;
+            return CreateRoomMarker(room, pos, rot);
+        }
+
+        // South (-Z)
+        if (!room.neighbors.Exists(r => r.gridPos == room.gridPos + Vector2Int.down))
+        {
+            Vector3 pos = center + Vector3.back * (half - markerWallInset);
+            Quaternion rot = Quaternion.LookRotation(Vector3.forward, Vector3.up) * markerYawFix;
+            return CreateRoomMarker(room, pos, rot);
+        }
+
+        // West (-X)
+        if (!room.neighbors.Exists(r => r.gridPos == room.gridPos + Vector2Int.left))
+        {
+            Vector3 pos = center + Vector3.left * (half - markerWallInset);
+            Quaternion rot = Quaternion.LookRotation(Vector3.right, Vector3.up) * markerYawFix;
+            return CreateRoomMarker(room, pos, rot);
+        }
+
+        // No empty wall found
+        return null;
+    }
+
+    private List<GameObject> CreateRandomFloorMarkers(RoomNode room, int count, int seedOffset = 0)
+    {
+        List<GameObject> markers = new List<GameObject>();
+        if (room == null || room.instance == null) return markers;
+        if (roomMarkerPrefab == null) return markers;
+        if (count <= 0) return markers;
+
+        int seed = useRandomSeed ? Environment.TickCount : fixedSeed;
+        System.Random rng = new System.Random(seed + seedOffset + room.gridPos.GetHashCode());
+
+        Vector3 center = room.instance.transform.position;
+        float half = cellSize / 2f;
+
+        float minX = -half + markerFloorPadding;
+        float maxX = half - markerFloorPadding;
+        float minZ = -half + markerFloorPadding;
+        float maxZ = half - markerFloorPadding;
+
+        for (int i = 0; i < count; i++)
+        {
+            float x = Mathf.Lerp(minX, maxX, (float)rng.NextDouble());
+            float z = Mathf.Lerp(minZ, maxZ, (float)rng.NextDouble());
+
+            Vector3 pos = center + new Vector3(x, 0f, z);
+            GameObject m = CreateRoomMarker(room, pos, Quaternion.identity);
+            if (m != null) markers.Add(m);
+        }
+
+        return markers;
+    }
 
     // ---------- GIZMOS ----------
 
@@ -553,6 +748,12 @@ public class ProceduralLevelGenerator : MonoBehaviour
                     break;
                 case RoomKind.Objective:
                     Gizmos.color = Color.red;
+                    break;
+                case RoomKind.EnemySpawn:
+                    Gizmos.color = Color.purple;
+                    break;
+                case RoomKind.Loot:
+                    Gizmos.color = Color.yellow;
                     break;
                 default:
                     Gizmos.color = Color.cyan;
