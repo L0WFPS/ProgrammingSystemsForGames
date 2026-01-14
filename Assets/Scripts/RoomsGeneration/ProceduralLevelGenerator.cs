@@ -21,7 +21,6 @@ public class ProceduralLevelGenerator : MonoBehaviour
         public RoomKind kind = RoomKind.Normal;
         public List<RoomNode> neighbors = new List<RoomNode>();
 
-        // Optional: link to the instantiated GameObject for this room
         [NonSerialized] public GameObject instance;
     }
 
@@ -29,7 +28,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
     [Min(2)]
     public int mainPathLength = 10;
 
-    public int cellSize = 10;          // World units between room centers
+    public int cellSize = 10;          
     public bool useRandomSeed = true;
     public int fixedSeed = 0;
 
@@ -89,7 +88,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
     [SerializeField]
     private List<RoomNode> rooms = new List<RoomNode>();
 
-    // ADD near your spawnedInstances list (so markers get cleaned up too)
+    // Markers List
     private readonly List<GameObject> spawnedDoorwayMarkers = new List<GameObject>();
 
     // List of all doors spawned
@@ -298,7 +297,7 @@ public class ProceduralLevelGenerator : MonoBehaviour
     {
         if (maxEnemySpawnRooms <= 0) return;
 
-        // Collect candidates: ONLY normal rooms (not Entrance/Objective)
+        // Collect candidates: ONLY normal rooms 
         List<RoomNode> candidates = new List<RoomNode>();
         foreach (var room in rooms)
         {
@@ -631,7 +630,6 @@ public class ProceduralLevelGenerator : MonoBehaviour
     {
         if (room == null || room.instance == null) return 0f;
 
-        // Your floor is a cube of height 1 at (pos + y=-0.5), so its top is instanceY + 0.5
         return room.instance.transform.position.y + 0.5f;
     }
 
@@ -642,7 +640,6 @@ public class ProceduralLevelGenerator : MonoBehaviour
 
         Transform parent = levelRoot != null ? levelRoot : transform;
 
-        // snap marker to floor top
         worldPos.y = GetRoomFloorTopY(room) + markerFloorOffset;
 
         GameObject marker = Instantiate(roomMarkerPrefab, worldPos, rot, parent);
