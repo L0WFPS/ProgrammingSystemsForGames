@@ -855,6 +855,7 @@ MonoBehaviour:
     m_Bits: 17216
   promptText: {fileID: 0}
   promptRoot: {fileID: 0}
+  recipeUI: {fileID: 2019053208}
   inventory: {fileID: 1740382111}
   throwForce: 8
   throwOrigin: {fileID: 452514918}
@@ -1015,6 +1016,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 43cb7d9145586b946a7a466101806d85, type: 3}
+--- !u!1 &2019053208 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6353160522837126116, guid: 482bdc6c1babd2944b9c618ad04508b8, type: 3}
+  m_PrefabInstance: {fileID: 1632015710}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &2092111628
 GameObject:
   m_ObjectHideFlags: 0

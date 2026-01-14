@@ -68,7 +68,7 @@ public class MovementScript : MonoBehaviour
         rb.MovePosition(targetPos);
 
         
-        
+        /*
         if (Input.GetKey(crouchKey))
         {
             transform.position = new Vector3(targetPos.x, crouchHeight, targetPos.z);
@@ -79,6 +79,7 @@ public class MovementScript : MonoBehaviour
             transform.position = new Vector3(targetPos.x, targetPos.y, targetPos.z);
             speed = 5;
         }
+        */
 
     }
 
@@ -88,9 +89,5 @@ public class MovementScript : MonoBehaviour
         {
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
         }
-    }
-    void Crouch()
-    {
-        
     }
 }

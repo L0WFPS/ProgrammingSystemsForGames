@@ -11,6 +11,7 @@ public class PlayerInteractor : MonoBehaviour
     [Header("UI")]
     [SerializeField] private Text promptText; // optional legacy Text
     [SerializeField] private GameObject promptRoot;
+    [SerializeField] private GameObject recipeUI;
 
     [Header("Refs")]
     [SerializeField] private PlayerInventory inventory;
@@ -47,6 +48,7 @@ public class PlayerInteractor : MonoBehaviour
         HandleInteractKey();
         HandleHotbarKeys();
         HandleThrowAndDrop();
+        UIToggle();
     }
 
     void UpdateHover()
@@ -139,6 +141,14 @@ public class PlayerInteractor : MonoBehaviour
         {
             Transform origin = dropOrigin != null ? dropOrigin : transform;
             inventory.DropSelected(origin);
+        }
+    }
+
+    void UIToggle()
+    {
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            recipeUI.SetActive(!recipeUI.activeSelf);
         }
     }
 }
