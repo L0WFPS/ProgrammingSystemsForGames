@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 3
   tags:
   - Craftable
+  - WinCondition
   layers:
   - Default
   - TransparentFX
@@ -17,11 +18,11 @@ TagManager:
   - Craftable
   - Button
   - Ground
-  - 
-  - 
-  - 
-  - 
-  - 
+  - RoomGeometry
+  - Player
+  - Walls
+  - Door
+  - Monster
   - 
   - 
   - 

@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 1840231452524342282}
   - component: {fileID: 8712665221733983790}
   - component: {fileID: 5753596335294715580}
+  - component: {fileID: 4990877288611802937}
   m_Layer: 8
   m_Name: TestObject4
   m_TagString: Untagged
@@ -168,3 +169,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Ingredient
   item: {fileID: 11400000, guid: 9fda12ae0d560844e8b13f793cb0698f, type: 2}
+--- !u!114 &4990877288611802937
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2313090641000766940}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4cf198eef628504aa8c4d4e874ca84c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ThrowableKillOnHit
+  requireArmed: 1
+  monsterLayerName: Monster
+  minImpactSpeed: 0

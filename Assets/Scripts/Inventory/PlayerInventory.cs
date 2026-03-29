@@ -1,5 +1,3 @@
-using NUnit.Framework;
-using NUnit.Framework.Interfaces;
 using System;
 using UnityEngine;
 
@@ -36,7 +34,6 @@ public class PlayerInventory : MonoBehaviour
         if (equipment == null) equipment = GetComponent<EquipmentHandler>();
     }
 
-    
     public bool AddItem(ObjectData data, int amount = 1)
     {
         if (data == null) return false;
@@ -46,9 +43,7 @@ public class PlayerInventory : MonoBehaviour
             if (slots[i].IsEmpty)
             {
                 slots[i].item = data;
-                OnSlotChanged?.Invoke(i, data);   //  tell UI
-                // Optional: auto-select/equip when you pick the first item
-                // if (IsCompletelyEmptyExcept(i)) SelectSlot(i);
+                OnSlotChanged?.Invoke(i, data);   // tell UI
                 return true;
             }
         }
@@ -74,11 +69,10 @@ public class PlayerInventory : MonoBehaviour
 
     public ItemSlot GetSelectedSlot()
     {
-       
         if (SelectedIndex < 0 || SelectedIndex >= slots.Length) return null;
         return slots[SelectedIndex];
-        
     }
+
     public ObjectData GetSelectedItem() => GetSelectedSlot()?.item;
 
     public void SelectSlot(int index)
@@ -86,7 +80,7 @@ public class PlayerInventory : MonoBehaviour
         index = Mathf.Clamp(index, 0, slots.Length - 1);
         SelectedIndex = index;
         EquipSelected();
-        OnSelectionChanged?.Invoke(SelectedIndex); //  tell UI
+        OnSelectionChanged?.Invoke(SelectedIndex); // tell UI
     }
 
     public void EquipSelected()
@@ -104,24 +98,62 @@ public class PlayerInventory : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// OLD: keeps your original method (if anything calls it, it still works).
+    /// </summary>
     public bool DropSelectedAndThrow(Transform origin, float force)
     {
         var slot = GetSelectedSlot();
         if (slot == null || slot.IsEmpty) return false;
 
-        // Throw the currently equipped instance (if any)
         var thrown = equipment.ThrowHeld(origin, force);
 
-        // Remove item from inventory slot
         slot.item = null;
+        OnSlotChanged?.Invoke(SelectedIndex, null);
 
-        OnSlotChanged?.Invoke(SelectedIndex, null); //  update UI
-
-        // Ensure our “in hand” visuals are cleared
         EnsureValidSelection();
 
         return thrown != null;
     }
+
+    /// <summary>
+    /// NEW: Throw selected item (use for Left Click).
+    /// Removes the item from the slot and throws the equipped instance.
+    /// </summary>
+    public bool ThrowSelected(Transform origin, float force)
+    {
+        var slot = GetSelectedSlot();
+        if (slot == null || slot.IsEmpty) return false;
+
+        var thrown = equipment.ThrowHeld(origin, force);
+
+        slot.item = null;
+        OnSlotChanged?.Invoke(SelectedIndex, null);
+
+        EnsureValidSelection();
+
+        return thrown != null;
+    }
+
+    /// <summary>
+    /// NEW: Drop selected item (use for G).
+    /// Removes the item from the slot and drops the equipped instance with no throw force.
+    /// </summary>
+    public bool DropSelected(Transform origin)
+    {
+        var slot = GetSelectedSlot();
+        if (slot == null || slot.IsEmpty) return false;
+
+        var dropped = equipment.DropHeld(origin);
+
+        slot.item = null;
+        OnSlotChanged?.Invoke(SelectedIndex, null);
+
+        EnsureValidSelection();
+
+        return dropped != null;
+    }
+
     /// <summary>
     /// Clears the selected slot and updates equipped item.
     /// </summary>
@@ -129,8 +161,9 @@ public class PlayerInventory : MonoBehaviour
     {
         var s = GetSelectedSlot();
         if (s == null) return;
+
         s.item = null;
-        OnSlotChanged?.Invoke(SelectedIndex, null); //  tell UI
+        OnSlotChanged?.Invoke(SelectedIndex, null);
         EnsureValidSelection();
     }
 
